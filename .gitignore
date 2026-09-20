@@ -1,5 +1,29 @@
-.venv/
-__pycache__/
+# Secrets
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+**/service-account*.json
+**/*-key.json
+
+# Local
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+node_modules/
 .platform-ops/
+data/
+*.log
+*.dump
+*.sqlite
 .DS_Store
+.idea/
+.vscode/
+dist/
+build/

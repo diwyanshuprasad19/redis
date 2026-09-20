@@ -1,0 +1,13 @@
+.git
+.venv
+venv
+.env
+.env.*
+.platform-ops
+node_modules
+**/__pycache__
+.pytest_cache
+*.pem
+*.key
+*credentials*.json
+.DS_Store
