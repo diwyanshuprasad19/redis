@@ -27,3 +27,4 @@ data/
 .vscode/
 dist/
 build/
+.github/workflows/
