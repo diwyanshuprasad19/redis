@@ -1,0 +1,6 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+  # Prefer shared stack from platform-ops (ports 6380 / 5433) for multi-repo work.
