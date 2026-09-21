@@ -27,3 +27,5 @@ data/
 .vscode/
 dist/
 build/
+*.egg-info/
+.coverage
