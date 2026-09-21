@@ -6,11 +6,13 @@ sharing one ConnectionPool with a hard max_connections cap.
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 import redis
 from redis.connection import ConnectionPool
 
+from redis_app import metrics
 from redis_app.settings import RedisSettings
 
 
@@ -51,18 +53,34 @@ class RedisClient:
         return int(getattr(self._pool, "max_connections", self.settings.max_connections))
 
     def ping(self) -> bool:
-        return bool(self._client.ping())
+        t0 = time.perf_counter()
+        try:
+            return bool(self._client.ping())
+        finally:
+            metrics.observe("ping", time.perf_counter() - t0)
 
     def get(self, key: str) -> Any:
-        return self._client.get(key)
+        t0 = time.perf_counter()
+        try:
+            return self._client.get(key)
+        finally:
+            metrics.observe("get", time.perf_counter() - t0)
 
     def setex(self, key: str, ttl_seconds: int, value: str) -> bool:
-        return bool(self._client.setex(key, ttl_seconds, value))
+        t0 = time.perf_counter()
+        try:
+            return bool(self._client.setex(key, ttl_seconds, value))
+        finally:
+            metrics.observe("setex", time.perf_counter() - t0)
 
     def delete(self, *keys: str) -> int:
         if not keys:
             return 0
-        return int(self._client.delete(*keys))
+        t0 = time.perf_counter()
+        try:
+            return int(self._client.delete(*keys))
+        finally:
+            metrics.observe("delete", time.perf_counter() - t0)
 
     def close(self) -> None:
         if self._owns_pool and self._pool is not None:
