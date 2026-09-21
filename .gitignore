@@ -27,4 +27,5 @@ data/
 .vscode/
 dist/
 build/
-.github/workflows/
+*.egg-info/
+.coverage

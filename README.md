@@ -1,6 +1,6 @@
-# Redis project scaffold — separate repo under github_project/redis
+# Redis project — pooled client + pipeline batching for large-scale access
 
-Python + Redis + optional Postgres (via platform-ops data-stack).
+Python + Redis (`localhost:6380` via platform-ops data-stack).
 
 ## Local-first (required before PR)
 
@@ -11,6 +11,19 @@ make anti-slop REPO=redis       # aislop ≥ 80
 make auto REPO=redis TITLE="…"  # push + PR only if green
 ```
 
+## Client (scale)
+
+```bash
+pip install -e ".[dev]"
+pytest tests/ -q
+python scripts/load_pipeline_dry.py --dry-run --keys 10000
+# live (after make data-up):
+REDIS_URL=redis://localhost:6380/0 python scripts/load_pipeline_dry.py --keys 5000
+```
+
+- `RedisClient` — shared `ConnectionPool` with `REDIS_MAX_CONNECTIONS` (default 50)
+- `mget_via_pipeline` / `msetex_via_pipeline` — one RTT per batch
+
 ## Local data (from platform-ops)
 
 ```bash
@@ -18,20 +31,16 @@ cd ../platform-ops
 make data-up
 # Redis: localhost:6380
 # Postgres redis_app: localhost:5433  user/pass app/app
-make alembic REPO=redis
 ```
 
-## Observability (local + GCP)
+## Observability
 
-Shared stack lives in `platform-ops` — see `../platform-ops/OBSERVABILITY.md`.
+Shared stack in `platform-ops` — see `../platform-ops/OBSERVABILITY.md`.
 
 ```bash
 cd ../platform-ops
-make obs-up            # Alloy + Prometheus + Loki + Grafana :3001 + Uptime Kuma :3002
-make obs-gcp-check SERVICE=api   # after Cloud Run deploy
+make obs-up
 ```
-
-App signals: Prometheus `/metrics` + JSON logs (`LOG_FORMAT=json`). Cloud Run ships both to Cloud Logging / Monitoring automatically on `make deploy`.
 
 ## PR automation
 
@@ -40,4 +49,4 @@ cd ../platform-ops
 make auto REPO=redis TITLE="feat: …"
 ```
 
-Runs anti-slop → local-gate → lint/security/graphify → push → PR → PR-Agent.
+PR review (Actions): **git diff / PR files** via reviewdog (`filter-mode=added`) + PR-Agent — not whole-repo AI review.
