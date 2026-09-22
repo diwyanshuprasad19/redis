@@ -14,6 +14,7 @@ class RedisSettings:
     max_connections: int = 50
     socket_connect_timeout: float = 1.0
     socket_timeout: float = 1.0
+    pool_timeout: float = 2.0
     health_check_interval: int = 30
     decode_responses: bool = True
 
@@ -26,6 +27,7 @@ class RedisSettings:
                 os.getenv("REDIS_SOCKET_CONNECT_TIMEOUT", str(cls.socket_connect_timeout))
             ),
             socket_timeout=float(os.getenv("REDIS_SOCKET_TIMEOUT", str(cls.socket_timeout))),
+            pool_timeout=float(os.getenv("REDIS_POOL_TIMEOUT", str(cls.pool_timeout))),
             health_check_interval=int(
                 os.getenv("REDIS_HEALTH_CHECK_INTERVAL", str(cls.health_check_interval))
             ),

@@ -2,6 +2,7 @@
 
 from redis_app.batch import mget_via_pipeline, msetex_via_pipeline
 from redis_app.client import RedisClient
+from redis_app.metrics import observe
 from redis_app.settings import RedisSettings
 
 __all__ = [
@@ -9,4 +10,5 @@ __all__ = [
     "RedisSettings",
     "mget_via_pipeline",
     "msetex_via_pipeline",
+    "observe",
 ]
