@@ -37,6 +37,7 @@ class RedisClient:
             max_connections=self.settings.max_connections,
             socket_connect_timeout=self.settings.socket_connect_timeout,
             socket_timeout=self.settings.socket_timeout,
+            timeout=self.settings.pool_timeout,
             health_check_interval=self.settings.health_check_interval,
             decode_responses=self.settings.decode_responses,
         )

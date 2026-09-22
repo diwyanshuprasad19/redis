@@ -34,7 +34,7 @@ def msetex_via_pipeline(
         return 0
     if ttl_seconds <= 0:
         raise ValueError("ttl_seconds must be > 0")
-    pipe = client.raw.pipeline(transaction=False)
+    pipe = client.raw.pipeline(transaction=True)
     for key, value in items.items():
         pipe.setex(key, ttl_seconds, value)
     results = pipe.execute()
