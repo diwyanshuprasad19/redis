@@ -22,8 +22,10 @@ jobs:
           ruff check --output-format=pylint src tests scripts 2>/dev/null | \
             reviewdog -f=pylint -name=ruff -reporter=github-pr-review -filter-mode=added -level=warning || true
 
+  # Skip when OPENAI_API_KEY missing — avoids "Failed to generate code suggestions" emails.
   pr-agent:
     runs-on: ubuntu-latest
+    if: ${{ secrets.OPENAI_API_KEY != '' }}
     permissions:
       contents: read
       pull-requests: write
