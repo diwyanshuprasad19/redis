@@ -20,14 +20,23 @@ class RedisSettings:
 
     @classmethod
     def from_env(cls) -> RedisSettings:
+        pool_timeout = float(os.getenv("REDIS_POOL_TIMEOUT", str(cls.pool_timeout)))
+        socket_connect_timeout = float(
+            os.getenv("REDIS_SOCKET_CONNECT_TIMEOUT", str(cls.socket_connect_timeout))
+        )
+        socket_timeout = float(os.getenv("REDIS_SOCKET_TIMEOUT", str(cls.socket_timeout)))
+        if pool_timeout <= 0:
+            raise ValueError("REDIS_POOL_TIMEOUT must be > 0")
+        if socket_connect_timeout <= 0:
+            raise ValueError("REDIS_SOCKET_CONNECT_TIMEOUT must be > 0")
+        if socket_timeout <= 0:
+            raise ValueError("REDIS_SOCKET_TIMEOUT must be > 0")
         return cls(
             url=os.getenv("REDIS_URL", cls.url),
             max_connections=int(os.getenv("REDIS_MAX_CONNECTIONS", str(cls.max_connections))),
-            socket_connect_timeout=float(
-                os.getenv("REDIS_SOCKET_CONNECT_TIMEOUT", str(cls.socket_connect_timeout))
-            ),
-            socket_timeout=float(os.getenv("REDIS_SOCKET_TIMEOUT", str(cls.socket_timeout))),
-            pool_timeout=float(os.getenv("REDIS_POOL_TIMEOUT", str(cls.pool_timeout))),
+            socket_connect_timeout=socket_connect_timeout,
+            socket_timeout=socket_timeout,
+            pool_timeout=pool_timeout,
             health_check_interval=int(
                 os.getenv("REDIS_HEALTH_CHECK_INTERVAL", str(cls.health_check_interval))
             ),
