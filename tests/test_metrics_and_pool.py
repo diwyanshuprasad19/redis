@@ -98,6 +98,129 @@ def test_observe_disabled_branch(monkeypatch: pytest.MonkeyPatch) -> None:
     metrics_mod.observe("noop", 0.01)
 
 
+def test_metrics_reimport_reuses_prometheus_collectors() -> None:
+    """Second Counter registration must reuse collectors (CI DuplicateTimeseries)."""
+
+    class _Dup(ValueError):
+        pass
+
+    class _Child:
+        def inc(self, *a, **k):
+            return None
+
+        def observe(self, *a, **k):
+            return None
+
+    class _Metric:
+        _created = 0
+
+        def __init__(self, *a, **k):
+            type(self)._created += 1
+            if type(self)._created > 2:  # Counter + Histogram once, then dup
+                raise _Dup("Duplicated timeseries in CollectorRegistry")
+
+        def labels(self, **k):
+            return _Child()
+
+    mod = ModuleType("prometheus_client")
+    mod.Counter = _Metric  # type: ignore[attr-defined]
+    mod.Histogram = _Metric  # type: ignore[attr-defined]
+    # REGISTRY used only on reuse path
+    reg = ModuleType("prometheus_client.registry")
+    collectors = {}
+
+    class _Reg:
+        _names_to_collectors = collectors
+
+    reg.DuplicateTimeseries = _Dup  # type: ignore[attr-defined]
+    real = sys.modules.get("prometheus_client")
+    real_reg = sys.modules.get("prometheus_client.registry")
+    try:
+        sys.modules["prometheus_client"] = mod
+        sys.modules["prometheus_client.registry"] = reg
+        if "redis_app.metrics" in sys.modules:
+            del sys.modules["redis_app.metrics"]
+        first = importlib.import_module("redis_app.metrics")
+        assert first._ENABLED is True
+        collectors["redis_app_ops_total"] = first.REDIS_OPS
+        collectors["redis_app_op_seconds"] = first.REDIS_OP_SECONDS
+        # Attach REGISTRY for second import reuse path
+        mod.REGISTRY = _Reg()  # type: ignore[attr-defined]
+        del sys.modules["redis_app.metrics"]
+        second = importlib.import_module("redis_app.metrics")
+        assert second._ENABLED is True
+        assert second.REDIS_OPS is first.REDIS_OPS
+        second.observe("reimport", 0.001)
+    finally:
+        if "redis_app.metrics" in sys.modules:
+            del sys.modules["redis_app.metrics"]
+        if real is not None:
+            sys.modules["prometheus_client"] = real
+        else:
+            sys.modules.pop("prometheus_client", None)
+        if real_reg is not None:
+            sys.modules["prometheus_client.registry"] = real_reg
+        else:
+            sys.modules.pop("prometheus_client.registry", None)
+        importlib.import_module("redis_app.metrics")
+
+
+def test_metrics_unexpected_counter_error_propagates() -> None:
+    class _Metric:
+        def __init__(self, *a, **k):
+            raise RuntimeError("boom")
+
+    mod = ModuleType("prometheus_client")
+    mod.Counter = _Metric  # type: ignore[attr-defined]
+    mod.Histogram = _Metric  # type: ignore[attr-defined]
+    real = sys.modules.get("prometheus_client")
+    try:
+        sys.modules["prometheus_client"] = mod
+        if "redis_app.metrics" in sys.modules:
+            del sys.modules["redis_app.metrics"]
+        with pytest.raises(RuntimeError, match="boom"):
+            importlib.import_module("redis_app.metrics")
+    finally:
+        sys.modules.pop("redis_app.metrics", None)
+        if real is not None:
+            sys.modules["prometheus_client"] = real
+        else:
+            sys.modules.pop("prometheus_client", None)
+        importlib.import_module("redis_app.metrics")
+
+
+def test_metrics_duplicate_without_registry_collectors_raises() -> None:
+    class _Dup(ValueError):
+        pass
+
+    class _Metric:
+        def __init__(self, *a, **k):
+            raise _Dup("Duplicated timeseries")
+
+    mod = ModuleType("prometheus_client")
+    mod.Counter = _Metric  # type: ignore[attr-defined]
+    mod.Histogram = _Metric  # type: ignore[attr-defined]
+
+    class _Reg:
+        _names_to_collectors = {}
+
+    mod.REGISTRY = _Reg()  # type: ignore[attr-defined]
+    real = sys.modules.get("prometheus_client")
+    try:
+        sys.modules["prometheus_client"] = mod
+        if "redis_app.metrics" in sys.modules:
+            del sys.modules["redis_app.metrics"]
+        with pytest.raises(_Dup):
+            importlib.import_module("redis_app.metrics")
+    finally:
+        sys.modules.pop("redis_app.metrics", None)
+        if real is not None:
+            sys.modules["prometheus_client"] = real
+        else:
+            sys.modules.pop("prometheus_client", None)
+        importlib.import_module("redis_app.metrics")
+
+
 def test_client_builds_pool_and_close() -> None:
     settings = RedisSettings(url="redis://localhost:6379/0", max_connections=3)
     pool = MagicMock()
