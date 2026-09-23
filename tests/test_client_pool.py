@@ -66,3 +66,17 @@ def test_settings_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     s = RedisSettings.from_env()
     assert s.url == "redis://example:6379/2"
     assert s.max_connections == 80
+
+
+def test_settings_reject_non_positive_timeouts(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("REDIS_POOL_TIMEOUT", "0")
+    with pytest.raises(ValueError, match="REDIS_POOL_TIMEOUT"):
+        RedisSettings.from_env()
+    monkeypatch.setenv("REDIS_POOL_TIMEOUT", "2")
+    monkeypatch.setenv("REDIS_SOCKET_TIMEOUT", "-1")
+    with pytest.raises(ValueError, match="REDIS_SOCKET_TIMEOUT"):
+        RedisSettings.from_env()
+    monkeypatch.setenv("REDIS_SOCKET_TIMEOUT", "1")
+    monkeypatch.setenv("REDIS_SOCKET_CONNECT_TIMEOUT", "0")
+    with pytest.raises(ValueError, match="REDIS_SOCKET_CONNECT_TIMEOUT"):
+        RedisSettings.from_env()
